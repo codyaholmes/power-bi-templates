@@ -1,0 +1,213 @@
+DAX CODE TEMPLATES FOR TREND MEASURES
+
+Notes:
+- These are copy/paste templates to use for building out trend DAX measures within Power BI.
+- Keep in mind that table (i.e. 'Date'), column (i.e. 'Date'[Week Index] ), and measure (i.e. [Total Sales]) will need to be replaced with the user's relevant data.
+- Two templates exist. One for days and one for weeks. Days can generally reference the 'Date' table, but week contexts need an integer such as a week index to work correctly.
+- If a month context was preferred, then it is suggested to use a year-month index or a year-month integer (i.e. 202301, 202302, etc.)
+- Whatever the date column is used to derive the trend (Week Index or Year-Month Index), keep in mind that the same column will need to be used in visualizations to be accurate.
+
+******************************** HELPER MEASURES
+
+Last Sales Date = 
+// Finds the last order date in the Sales table.
+// Used as a last-X-days marker for slopes and trends
+CALCULATE(
+    MAX( Sales[OrderDate] ),
+    ALL( Sales )
+)
+
+********
+
+Last Full Week = 
+// Finds the last full week for which there is sales data
+// Used as a last-X-weeks marker for slopes and trends
+VAR CurrentWeekLookup = 
+    LOOKUPVALUE(
+        'Date'[Week Index],
+        'Date'[Date],
+        [Last Sales Date]
+    )
+VAR CurrentWeekStart = 
+    CALCULATE(
+        MIN( 'Date'[Date] ),
+        'Date'[Week Index] = CurrentWeekLookup
+    )
+VAR IsFullWeek = DATEDIFF( CurrentWeekStart, [Last Sales Date], DAY ) + 1 = 7
+RETURN
+    IF(
+        IsFullWeek,
+        CurrentWeekLookup,
+        CurrentWeekLookup - 1
+    )
+
+******************************** TRENDLINES
+
+Trend Sales Daily = 
+VAR Known =
+    FILTER (
+        SELECTCOLUMNS (
+            /* Use ALLSELECTED( 'Date' ) instead of ALLSELECTED( 'Date'[Date] )
+            so that the trendline becomes dynamically accurate. */
+            ALLSELECTED ( 'Date' ),
+            "Known[X]", [Date],
+            "Known[Y]", [Total Sales]
+        ),
+        AND (
+            NOT ( ISBLANK ( Known[X] ) ),
+            NOT ( ISBLANK ( Known[Y] ) )
+        )
+    )
+VAR SlopeIntercept = LINESTX( Known, Known[Y], Known[X], TRUE )
+VAR Slope = SELECTCOLUMNS( SlopeIntercept, [Slope1] )
+VAR Intercept = SELECTCOLUMNS( SlopeIntercept, [Intercept] )
+VAR Trendline = SUMX( VALUES( 'Date'[Date] ), Intercept + Slope * 'Date'[Date] )
+RETURN
+    Trendline
+
+********
+
+Trend Sales Weekly = 
+VAR Known =
+    FILTER (
+        SELECTCOLUMNS (
+            /* If wanting to display by trends, keep in mind that the visualization's dimension
+            must be in the scope of Week Index (or whatever other column is being used. */
+            ALLSELECTED ( 'Date'[Week Index] ),
+            "Known[X]", [Week Index],
+            "Known[Y]", [Total Sales]
+        ),
+        AND (
+            NOT ( ISBLANK ( Known[X] ) ),
+            NOT ( ISBLANK ( Known[Y] ) )
+        )
+    )
+VAR SlopeIntercept = LINESTX( Known, Known[Y], Known[X], TRUE )
+VAR Slope = SELECTCOLUMNS( SlopeIntercept, [Slope1] )
+VAR Intercept = SELECTCOLUMNS( SlopeIntercept, [Intercept] )
+VAR Trendline = SUMX( VALUES( 'Date'[Week Index] ), Intercept + Slope * 'Date'[Week Index] )
+RETURN
+    Trendline
+
+******************************** SLOPES
+
+Slope Sales Daily = 
+VAR Known =
+    FILTER (
+        SELECTCOLUMNS (
+            ALLSELECTED( 'Date' ),
+            "Known[X]", [Date],
+            "Known[Y]", [Total Sales]
+        ),
+        AND (
+            NOT ( ISBLANK ( Known[X] ) ),
+            NOT ( ISBLANK ( Known[Y] ) )
+        )
+    )
+VAR SlopeIntercept = LINESTX( Known, Known[Y], Known[X], TRUE )
+VAR Slope = SELECTCOLUMNS( SlopeIntercept, [Slope1] )
+RETURN
+    Slope
+
+********
+
+Slope Sales Weekly = 
+VAR Known =
+    FILTER (
+        SELECTCOLUMNS (
+            ALLSELECTED( 'Date'[Week Index] ),
+            "Known[X]", [Week Index],
+            "Known[Y]", [Total Sales]
+        ),
+        AND (
+            NOT ( ISBLANK ( Known[X] ) ),
+            NOT ( ISBLANK ( Known[Y] ) )
+        )
+    )
+VAR SlopeIntercept = LINESTX( Known, Known[Y], Known[X], TRUE )
+VAR Slope = SELECTCOLUMNS( SlopeIntercept, [Slope1] )
+RETURN
+    Slope
+
+******************************** KPI MEASURES
+
+Slope Last 90 Days = 
+VAR Slope = 
+    CALCULATE(
+        [Slope Sales Weekly],
+        FILTER(
+            'Date',
+            'Date'[Date] >= [Last Sales Date] - 90 &&
+            'Date'[Date] <= [Last Sales Date]
+        )
+    )
+RETURN
+    Slope
+
+********
+
+Slope Last 90 Days All = 
+// Removes any filtering coming from the date table.
+// For some reason, adding the ALL() to the original measure does not work.
+CALCULATE(
+    [Slope Last 90 Days],
+    ALL( 'Date' )
+)
+
+********
+
+Slope Last 6 Weeks = 
+CALCULATE(
+    [Slope Sales Weekly],
+    FILTER(
+        'Date',
+        'Date'[Week Index] >= [Last Full Week] - 6 &&
+        'Date'[Week Index] <= [Last Full Week]
+    )
+)
+
+********
+
+Slope Last 6 Weeks All = 
+// Removes any filtering coming from the date table.
+// For some reason, adding the ALL() to the original measure does not work.
+CALCULATE(
+    [Slope Last 6 Weeks],
+    ALL( 'Date' )
+)
+
+********
+
+Trend KPI All Days = 
+VAR SlopeFormatted = FORMAT( [Slope Sales Daily], "$#,0" )
+VAR TrendIncreasing = [Slope Sales Daily] > 0
+VAR TrendDecreasing = [Slope Sales Daily] < 0
+VAR TrendIncreasingResult = "▲ " & SlopeFormatted & " each day"
+VAR TrendDecreasingResult = "▼ " & SlopeFormatted & " each day"
+VAR Result = 
+    SWITCH(
+        TRUE(),
+        TrendIncreasing, TrendIncreasingResult,
+        TrendDecreasing, TrendDecreasingResult,
+        "-"
+    )
+RETURN
+    Result
+
+********
+
+Trend KPI All Weeks = 
+VAR SlopeFormatted = FORMAT( [Slope Sales Weekly Full], "$#,0" )
+VAR TrendIncreasing = [Slope Sales Weekly Full] > 0
+VAR TrendDecreasing = [Slope Sales Weekly Full] < 0
+VAR TrendIncreasingResult = "▲ " & SlopeFormatted & " each week"
+VAR TrendDecreasingResult = "▼ " & SlopeFormatted & " each week"
+VAR Result = 
+    SWITCH(
+        TRUE(),
+        TrendIncreasing, TrendIncreasingResult,
+        TrendDecreasing, TrendDecreasingResult,
+        "-"
+    )
+RETURN
+    Result
