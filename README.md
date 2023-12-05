@@ -1,5 +1,5 @@
 # Power BI Templates
-Repository to hold useful Power BI templates
+A repository to hold useful Power BI templates
 
 ## Content
 ### Date Dimension Code for Power Query
