@@ -1,0 +1,85 @@
+Timeframes =
+VAR _Today = TODAY()
+// VAR _Today = MAX( 'Refresh Date'[Refresh Date] )
+VAR Yesterday = _Today - 1
+VAR LastMonthEnd = EOMONTH( _Today, -1 )
+VAR ThisMonthStart = DATE( YEAR( _Today ), MONTH( _Today ), 1 )
+VAR LastMonthStart = DATE( YEAR( LastMonthEnd ), MONTH( LastMonthEnd ), 1 )
+VAR ThisYearStart = DATE( YEAR( _Today ), 1, 1 )
+VAR ThisYearEnd = DATE( YEAR( _Today ), 12, 31 )
+VAR LastYearStart = DATE( YEAR( _Today ) - 1, 1, 1 )
+VAR LastYearToday = DATE( YEAR( _Today ) - 1, MONTH( _Today ), DAY( _Today ) )
+VAR YesterdayRow = SELECTCOLUMNS( {( Yesterday, "Yesterday", 1 )}, "Value", [Value1], "Period", [Value2], "Order", [Value3] ) -- 1st period
+VAR TodayRow = SELECTCOLUMNS( {( _Today, "Today", 2 )}, "Value", [Value1], "Period", [Value2], "Order", [Value3] ) -- 2nd period
+VAR ThisWeekStart = LOOKUPVALUE( Dates[Week Start], Dates[Date], _Today )
+VAR LastWeekRows =
+    SELECTCOLUMNS(
+        ADDCOLUMNS(
+            GENERATESERIES( ThisWeekStart - 7, ThisWeekStart - 1, 1 ),
+            "Period", "Last Week",
+            "Order", 3 -- 3rd period
+        ), "Date", [Value], "Period", [Period], "Order", [Order]
+    )
+VAR ThisWeekRows =
+    SELECTCOLUMNS(
+        ADDCOLUMNS(
+            GENERATESERIES( ThisWeekStart, ThisWeekStart + 7, 1 ),
+            "Period", "This Week",
+            "Order", 4 -- 4th period
+        ), "Date", [Value], "Period", [Period], "Order", [Order]
+    )
+VAR LastMonthRows =
+    SELECTCOLUMNS(
+        ADDCOLUMNS(
+            GENERATESERIES( LastMonthStart, LastMonthEnd, 1 ),
+            "Period", "Last Month",
+            "Order", 5 -- 5th period
+        ), "Date", [Value], "Period", [Period], "Order", [Order]
+    )
+VAR ThisMonthRows =
+    SELECTCOLUMNS(
+        ADDCOLUMNS(
+            GENERATESERIES( ThisMonthStart, _Today, 1 ),
+            "Period", "This Month",
+            "Order", 6 -- 6th period
+        ), "Date", [Value], "Period", [Period], "Order", [Order]
+    )
+VAR LastYearRows =
+    SELECTCOLUMNS(
+        ADDCOLUMNS(
+            GENERATESERIES( LastYearStart, ThisYearStart - 1, 1 ),
+            "Period", "Last Year",
+            "Order", 7 -- 7th period
+        ), "Date", [Value], "Period", [Period], "Order", [Order]
+    )
+VAR ThisYearRows =
+    SELECTCOLUMNS(
+        ADDCOLUMNS(
+            GENERATESERIES( ThisYearStart, ThisYearEnd, 1 ),
+            "Period", "This Year",
+            "Order", 8 -- 8th period
+        ), "Date", [Value], "Period", [Period], "Order", [Order]
+    )
+VAR LastYearToDateRows =
+    SELECTCOLUMNS(
+        ADDCOLUMNS(
+            GENERATESERIES( LastYearStart, LastYearToday, 1 ),
+            "Period", "Last Year to Date",
+            "Order", 9 -- 9th period
+        ), "Date", [Value], "Period", [Period], "Order", [Order]
+    )
+VAR YearToDateRows =
+    SELECTCOLUMNS(
+        ADDCOLUMNS(
+            GENERATESERIES( ThisYearStart, _Today, 1 ),
+            "Period", "Year to Date",
+            "Order", 10 -- 10th period
+        ), "Date", [Value], "Period", [Period], "Order", [Order]
+    )
+VAR Result =
+    SELECTCOLUMNS(
+        UNION( YesterdayRow, TodayRow, LastWeekRows, ThisWeekRows, LastMonthRows, ThisMonthRows, LastYearRows, ThisYearRows, LastYearToDateRows, YearToDateRows
+        ), "Period", [Period], "Order", [Order], "Date", [Value]
+    )
+RETURN
+    Result
