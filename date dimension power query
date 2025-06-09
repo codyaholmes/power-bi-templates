@@ -28,16 +28,17 @@ let
     #"Inserted First Characters1" = Table.AddColumn(#"Inserted Day Name", "Weekday Name Short", each Text.Start([Weekday Name], 3), type text),
     #"Added Custom6" = Table.AddColumn(#"Inserted First Characters1", "Year Week Int", each Number.ToText( [Year] ) & Number.ToText( [Week of Year], "0#" )),
     #"Changed Type2" = Table.TransformColumnTypes(#"Added Custom6",{{"Year Week Int", Int64.Type}}),
-    #"Grouped Rows" = Table.Group(#"Changed Type2", {"Year Week Int"}, {{"Data", each _, type table [Date=nullable date, Year=number, Month=number, Quarter=number, Week of Year=number, Day=number, Month Start=date, Month End=date, Days in Month=number, Month Name=text, Month Name Short=text, Month Name and Year=text, Month Name Short and Year=text, Year Month Number=nullable number, Quarter Name=text, Week of Month=number, Weekday=number, Day of Year=number, Weekday Name=text, Weekday Name Short=text, Year Week Number=nullable number]}, {"Week Start", each List.Min([Date]), type nullable date}, {"Week End", each List.Max([Date]), type nullable date}, {"Days of Week", each Table.RowCount(_), Int64.Type}}),
+    #"Grouped Rows" = Table.Group(#"Changed Type2", {"Year Week Int"}, {{"Data", each _, type table [Date=nullable date, Year=number, Month=number, Quarter=number, Week of Year=number, Day=number, Month Start=date, Month End=date, Days in Month=number, Month Name=text, Month Name Short=text, Month Name and Year=text, Month Name Short and Year=text, Year Month Int=nullable number, Quarter Name=text, Week of Month=number, Weekday=number, Day of Year=number, Weekday Name=text, Weekday Name Short=text, Year Week Int=nullable number]}, {"Week Start", each List.Min([Date]), type nullable date}, {"Week End", each List.Max([Date]), type nullable date}, {"Days of Week", each Table.RowCount(_), Int64.Type}}),
     #"Added Custom4" = Table.AddColumn(#"Grouped Rows", "Week Range", each Date.ToText( [Week Start], "M/d/yy" ) &
 " - " &
 Date.ToText( [Week End], "M/d/yy" ), type text),
     #"Added Custom5" = Table.AddColumn(#"Added Custom4", "Is Full Week", each if [Days of Week] = 7 then true else false, type logical),
     #"Added Index" = Table.AddIndexColumn(#"Added Custom5", "Week Index", 1, 1, Int64.Type),
     #"Reordered Columns" = Table.ReorderColumns(#"Added Index",{"Data", "Year Week Int", "Week Start", "Week End", "Week Range", "Week Index"}),
-    #"Expanded Data" = Table.ExpandTableColumn(#"Reordered Columns", "Data", {"Date", "Year", "Month", "Quarter", "Week of Year", "Day", "Month Start", "Month End", "Days in Month", "Month Name", "Month Name Short", "Month Name and Year", "Month Name Short and Year", "Year Month Number", "Quarter Name", "Week of Month", "Weekday", "Day of Year", "Weekday Name", "Weekday Name Short"}, {"Date", "Year", "Month", "Quarter", "Week of Year", "Day", "Month Start", "Month End", "Days in Month", "Month Name", "Month Name Short", "Month Name and Year", "Month Name Short and Year", "Year Month Number", "Quarter Name", "Week of Month", "Weekday", "Day of Year", "Weekday Name", "Weekday Name Short"}),
+    #"Expanded Data" = Table.ExpandTableColumn(#"Reordered Columns", "Data", {"Date", "Year", "Month", "Quarter", "Week of Year", "Day", "Month Start", "Month End", "Days in Month", "Month Name", "Month Name Short", "Month Name and Year", "Month Name Short and Year", "Year Month Int", "Quarter Name", "Week of Month", "Weekday", "Day of Year", "Weekday Name", "Weekday Name Short"}, {"Date", "Year", "Month", "Quarter", "Week of Year", "Day", "Month Start", "Month End", "Days in Month", "Month Name", "Month Name Short", "Month Name and Year", "Month Name Short and Year", "Year Month Int", "Quarter Name", "Week of Month", "Weekday", "Day of Year", "Weekday Name", "Weekday Name Short"}),
     #"Added Custom7" = Table.AddColumn(#"Expanded Data", "Is Business Day", each if [Weekday] = 0 then false
 else if [Weekday] = 6 then false
-else true, type logical)
+else true, type logical),
+    #"Changed Type3" = Table.TransformColumnTypes(#"Added Custom7",{{"Year", Int64.Type}, {"Month", Int64.Type}, {"Quarter", Int64.Type}, {"Week of Year", Int64.Type}, {"Day", Int64.Type}, {"Days in Month", Int64.Type}, {"Year Month Int", Int64.Type}, {"Week of Month", Int64.Type}, {"Weekday", Int64.Type}, {"Day of Year", Int64.Type}})
 in
-    #"Added Custom7"
+    #"Changed Type3"
