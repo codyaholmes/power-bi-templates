@@ -1,7 +1,7 @@
 let
-    // Dates can be hardcoded here, or parameters can be used.
-    StartDate = #date(2020, 1, 1),
-    EndDate = #date(2030, 12, 31),
+    // YearsBackStart and YearsForwardEnd are integer parameters that need to be set up.
+    StartDate = Date.StartOfYear(Date.AddYears(Refresh[Date]{0}, -YearsBackStart)),
+    EndDate = Date.EndOfYear(Date.AddYears(Refresh[Date]{0}, YearsForwardEnd)),
     Source = { Number.From(StartDate)..Number.From(EndDate) },
     #"Converted to Table" = Table.FromList(Source, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
     #"Changed Type" = Table.TransformColumnTypes(#"Converted to Table",{{"Column1", type date}}),
