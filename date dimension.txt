@@ -1,0 +1,53 @@
+let
+    // YearsBack and YearsForward are integer-based parameters that need to be setup, which determine the extents of the date table.
+    // FiscalMonthStart is an integer-based parameter that needs to be setup, which determines, as the name suggests, the fiscal month start.
+    // Be sure to add the three parameters above: YearsBack, YearsForward, and FiscalMonthStart.
+    StartDate = Date.StartOfYear(Date.AddYears(Refresh[Date]{0}, -YearsBack)),
+    EndDate = Date.EndOfYear(Date.AddYears(Refresh[Date]{0}, YearsForward)),
+    Source = { Number.From(StartDate)..Number.From(EndDate) },
+    #"Converted to Table" = Table.FromList(Source, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
+    #"Changed Type" = Table.TransformColumnTypes(#"Converted to Table",{{"Column1", type date}}),
+    #"Renamed Columns" = Table.RenameColumns(#"Changed Type",{{"Column1", "Date"}}),
+    #"Inserted Year" = Table.AddColumn(#"Renamed Columns", "Year", each Date.Year([Date]), Int64.Type),
+    #"Inserted Month" = Table.AddColumn(#"Inserted Year", "Month", each Date.Month([Date]), Int64.Type),
+    #"Inserted Quarter" = Table.AddColumn(#"Inserted Month", "Quarter", each Date.QuarterOfYear([Date]), Int64.Type),
+    #"Inserted Week of Year" = Table.AddColumn(#"Inserted Quarter", "Week of Year", each Date.WeekOfYear([Date], 1), Int64.Type),
+    #"Inserted Day" = Table.AddColumn(#"Inserted Week of Year", "Day", each Date.Day([Date]), Int64.Type),
+    #"Inserted Start of Month" = Table.AddColumn(#"Inserted Day", "Month Start", each Date.StartOfMonth([Date]), type date),
+    #"Inserted End of Month" = Table.AddColumn(#"Inserted Start of Month", "Month End", each Date.EndOfMonth([Date]), type date),
+    #"Inserted Days in Month" = Table.AddColumn(#"Inserted End of Month", "Days in Month", each Date.DaysInMonth([Date]), Int64.Type),
+    #"Inserted Month Name" = Table.AddColumn(#"Inserted Days in Month", "Month Name", each Date.MonthName([Date]), type text),
+    #"Inserted First Characters" = Table.AddColumn(#"Inserted Month Name", "Month mmm", each Text.Start([Month Name], 3), type text),
+    #"Added Custom" = Table.AddColumn(#"Inserted First Characters", "Month Name Year", each [Month Name] & " " & Number.ToText( [Year] ), type text),
+    #"Added Custom1" = Table.AddColumn(#"Added Custom", "Month mmm Year", each [Month mmm] & " " & Number.ToText( [Year] ), type text),
+    #"Added Custom2" = Table.AddColumn(#"Added Custom1", "Year Month Int", each Number.From( Date.ToText( [Date], "yyyyMM" ) ), Int64.Type),
+    #"Added Custom3" = Table.AddColumn(#"Added Custom2", "Quarter Name", each "Q" & Number.ToText( [Quarter] ), type text),
+    #"Inserted Week of Month" = Table.AddColumn(#"Added Custom3", "Week of Month", each Date.WeekOfMonth([Date]), Int64.Type),
+    #"Inserted Day of Week" = Table.AddColumn(#"Inserted Week of Month", "Weekday", each Date.DayOfWeek([Date]), Int64.Type),
+    #"Inserted Day of Year" = Table.AddColumn(#"Inserted Day of Week", "Day of Year", each Date.DayOfYear([Date]), Int64.Type),
+    #"Inserted Day Name" = Table.AddColumn(#"Inserted Day of Year", "Weekday Name", each Date.DayOfWeekName([Date]), type text),
+    #"Inserted First Characters1" = Table.AddColumn(#"Inserted Day Name", "Weekday ddd", each Text.Start([Weekday Name], 3), type text),
+    #"Added Custom6" = Table.AddColumn(#"Inserted First Characters1", "Year Week Int", each Number.From(
+    Number.ToText( [Year] ) &
+    Number.ToText( [Week of Year], "0#" )
+), Int64.Type),
+    #"Grouped Rows" = Table.Group(#"Added Custom6", {"Year Week Int"}, {{"Data", each _, type table [Date=nullable date, Year=number, Month=number, Quarter=number, Week of Year=number, Day=number, Month Start=date, Month End=date, Days in Month=number, Month Name=text, Month mmm=text, Month Name Year=text, Month mmm Year=text, Year Month Int=nullable number, Quarter Name=text, Week of Month=number, Weekday=number, Day of Year=number, Weekday Name=text, Weekday ddd=text, Year Week Int=nullable number]}, {"Week Start", each List.Min([Date]), type nullable date}, {"Week End", each List.Max([Date]), type nullable date}, {"Days of Week", each Table.RowCount(_), Int64.Type}}),
+    #"Added Custom4" = Table.AddColumn(#"Grouped Rows", "Week Range", each Date.ToText( [Week Start], "M/d/yy" ) &
+" - " &
+Date.ToText( [Week End], "M/d/yy" ), type text),
+    #"Added Custom5" = Table.AddColumn(#"Added Custom4", "Is Full Week", each if [Days of Week] = 7 then true else false, type logical),
+    #"Added Index" = Table.AddIndexColumn(#"Added Custom5", "Week Index", 1, 1, Int64.Type),
+    #"Reordered Columns" = Table.ReorderColumns(#"Added Index",{"Data", "Year Week Int", "Week Start", "Week End", "Week Range", "Week Index"}),
+    #"Expanded Data" = Table.ExpandTableColumn(#"Reordered Columns", "Data", {"Date", "Year", "Month", "Quarter", "Week of Year", "Day", "Month Start", "Month End", "Days in Month", "Month Name", "Month mmm", "Month Name Year", "Month mmm Year", "Year Month Int", "Quarter Name", "Week of Month", "Weekday", "Day of Year", "Weekday Name", "Weekday ddd"}, {"Date", "Year", "Month", "Quarter", "Week of Year", "Day", "Month Start", "Month End", "Days in Month", "Month Name", "Month mmm", "Month Name Year", "Month mmm Year", "Year Month Int", "Quarter Name", "Week of Month", "Weekday", "Day of Year", "Weekday Name", "Weekday ddd"}),
+    #"Added Custom7" = Table.AddColumn(#"Expanded Data", "Is Business Day", each if [Weekday] = 0 then false
+else if [Weekday] = 6 then false
+else true, type logical),
+    #"Added Custom8" = Table.AddColumn(#"Added Custom7", "Fiscal Month", each if [Month] >= FiscalMonthStart
+then [Month] - FiscalMonthStart + 1
+else [Month] + ( 12 - FiscalMonthStart + 1 )),
+    #"Added Custom9" = Table.AddColumn(#"Added Custom8", "Fiscal Year", each if [Month] >= FiscalMonthStart 
+then "FY " & Number.ToText( [Year] + 1 )
+else "FY " & Number.ToText( [Year] )),
+    #"Changed Type1" = Table.TransformColumnTypes(#"Added Custom9",{{"Year", Int64.Type}, {"Month", Int64.Type}, {"Quarter", Int64.Type}, {"Week of Year", Int64.Type}, {"Day", Int64.Type}, {"Year Month Int", Int64.Type}, {"Week of Month", Int64.Type}, {"Weekday", Int64.Type}, {"Day of Year", Int64.Type}, {"Fiscal Month", Int64.Type}, {"Fiscal Year", type text}})
+in
+    #"Changed Type1"
