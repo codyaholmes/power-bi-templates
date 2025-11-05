@@ -1,0 +1,38 @@
+let
+    // Query requires a parameter called StandardUtcAdjustment, which is a timezone's STANDARD adjustment from UTC.
+    // For example, -6 would be the standard adjustment for Central/America.
+    UtcDateTimeZone = DateTimeZone.UtcNow(),
+    UtcCurrentDate = Date.From(UtcDateTimeZone),
+    UtcCurrentYear = Date.Year(UtcCurrentDate),
+    UtcMarchFirst = #date(UtcCurrentYear, 3, 1),
+    UtcNovemberFirst = #date(UtcCurrentYear, 11, 1),
+    // Daylight Saving starts on the second Sunday of March
+    DaylightSavingStart = 
+        Date.AddDays(
+            UtcMarchFirst,
+            if Date.DayOfWeek(UtcMarchFirst, Day.Sunday) > 0
+            then 14 - Date.DayOfWeek(UtcMarchFirst, Day.Sunday)
+            else 7
+        ),
+    // Daylight Saving ends on the first Sunday of November
+    DaylightSavingEnd =
+        Date.AddDays(
+            UtcNovemberFirst,
+            if Date.DayOfWeek(UtcNovemberFirst, Day.Sunday) > 0
+            then 7 - Date.DayOfWeek(UtcNovemberFirst, Day.Sunday)
+            else 0
+        ),
+    DaylightSavingAdjustment = 
+        if UtcCurrentDate >= DaylightSavingStart and UtcCurrentDate < DaylightSavingEnd
+        then 1
+        else 0,
+    TimeZoneAdjustment = StandardUtcAdjustment + DaylightSavingAdjustment,
+    RemovedUtcTimeZone = DateTimeZone.RemoveZone(UtcDateTimeZone),
+    LocalDateTime = DateTime.From(RemovedUtcTimeZone) + #duration(0, TimeZoneAdjustment, 0, 0),
+    #"Converted to Table" = #table(1, {{LocalDateTime}}),
+    #"Changed Type" = Table.TransformColumnTypes(#"Converted to Table",{{"Column1", type datetime}}),
+    #"Duplicated Column" = Table.DuplicateColumn(#"Changed Type", "Column1", "Column1 - Copy"),
+    #"Changed Type1" = Table.TransformColumnTypes(#"Duplicated Column",{{"Column1 - Copy", type date}}),
+    #"Renamed Columns" = Table.RenameColumns(#"Changed Type1",{{"Column1", "Datetime"}, {"Column1 - Copy", "Date"}})
+in
+    #"Renamed Columns"
