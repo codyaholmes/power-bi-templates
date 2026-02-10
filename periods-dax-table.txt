@@ -1,0 +1,97 @@
+Periods = 
+// Min and Max dates can be changed manually
+VAR StartDate = MIN( Dates[Date] )
+VAR EndDate = MAX( Dates[Date] )
+// VAR TodayDate = TODAY() // Could be replaced with a refresh date
+VAR TodayDate = IF( MAX( 'Refresh'[_Past Close] ) == 1, MAX( 'Refresh'[Date] ), MAX( 'Refresh'[Date] ) - 1 )
+VAR CurrentYear = YEAR( TodayDate )
+VAR CurrentMonth = MONTH( TodayDate )
+VAR CurrentDay = DAY( TodayDate )
+VAR CurrentMonthStart = DATE( CurrentYear, CurrentMonth, 1 )
+VAR LastMonthDate = EDATE( CurrentMonthStart, -1 )
+VAR LastMonthStart = DATE( YEAR( LastMonthDate ), MONTH( LastMonthDate ), 1 )
+VAR LastMonthEnd = CurrentMonthStart - 1
+VAR YearStart = DATE( CurrentYear, 1, 1 )
+
+// Current Quarter calculations (Calendar)
+VAR CurrentQuarter = ROUNDUP( CurrentMonth / 3, 0 )
+VAR QuarterStartMonth = ( CurrentQuarter - 1 ) * 3 + 1
+VAR CurrentQuarterStart = DATE( CurrentYear, QuarterStartMonth, 1 )
+
+// Last Quarter calculations (Calendar)
+VAR LastQuarterStart = EDATE( CurrentQuarterStart, -3 )
+VAR LastQuarterEnd = CurrentQuarterStart - 1
+
+// Week calculations (Sunday start)
+VAR CurrentWeekday = WEEKDAY( TodayDate, 1 ) // 1 = Sunday
+VAR CurrentWeekStart = TodayDate - CurrentWeekday + 1
+VAR CurrentWeekEnd = TodayDate
+VAR LastWeekStart = CurrentWeekStart - 7
+VAR LastWeekEnd = CurrentWeekStart - 1
+
+// Last Year calculations (Calendar)
+VAR LastYearStart = DATE( CurrentYear - 1, 1, 1 )
+VAR LastYearEnd = DATE( CurrentYear - 1, 12, 31 )
+VAR LastYearQuarterStart = DATE( CurrentYear - 1, QuarterStartMonth, 1 )
+
+// Multi-Year Back calculations
+VAR TwoYearsBackStart = DATE( CurrentYear - 2, 1, 1 )
+VAR TwoYearsBackEnd = DATE( CurrentYear - 2, 12, 31 )
+VAR TwoYearBackLabel = FORMAT( TwoYearsBackStart, "YYYY" )
+VAR ThreeYearsBackStart = DATE( CurrentYear - 3, 1, 1 )
+VAR ThreeYearsBackEnd = DATE( CurrentYear - 3, 12, 31 )
+VAR ThreeYearBackLabel = FORMAT( ThreeYearsBackStart, "YYYY" )
+VAR FourYearsBackStart = DATE( CurrentYear - 4, 1, 1 )
+VAR FourYearsBackEnd = DATE( CurrentYear - 4, 12, 31 )
+VAR FourYearBackLabel = FORMAT( FourYearsBackStart, "YYYY" )
+VAR FiveYearsBackStart = DATE( CurrentYear - 5, 1, 1 )
+VAR FiveYearsBackEnd = DATE( CurrentYear - 5, 12, 31 )
+VAR FiveYearBackLabel = FORMAT( FiveYearsBackStart, "YYYY" )
+
+// Define all date ranges
+VAR AllDates = SELECTCOLUMNS( CALENDAR( StartDate, EndDate ), "Date", [Date], "Period", "Custom Input", "Order", 1)
+VAR _Today = SELECTCOLUMNS( CALENDAR( TodayDate, TodayDate ), "Date", [Date], "Period", "Today", "Order", 2)
+VAR _Yesterday = SELECTCOLUMNS( CALENDAR( TodayDate - 1, TodayDate - 1 ), "Date", [Date], "Period", "Yesterday", "Order", 3)
+VAR ThisWeek = SELECTCOLUMNS( CALENDAR( CurrentWeekStart, CurrentWeekEnd ), "Date", [Date], "Period", "This Week", "Order", 4)
+VAR LastWeek = SELECTCOLUMNS( CALENDAR( LastWeekStart, LastWeekEnd ), "Date", [Date], "Period", "Last Week", "Order", 5)
+VAR MtdDays = SELECTCOLUMNS( CALENDAR( CurrentMonthStart, TodayDate ), "Date", [Date], "Period", "MTD", "Order", 6)
+VAR LastMonthDays = SELECTCOLUMNS( CALENDAR( LastMonthStart, LastMonthEnd ), "Date", [Date], "Period", "Last Month", "Order", 7)
+VAR QtdDays = SELECTCOLUMNS( CALENDAR( CurrentQuarterStart, TodayDate ), "Date", [Date], "Period", "QTD", "Order", 8)
+VAR LastQuarter = SELECTCOLUMNS( CALENDAR( LastQuarterStart, LastQuarterEnd ), "Date", [Date], "Period", "Last Quarter", "Order", 9)
+VAR YtdDays = SELECTCOLUMNS( CALENDAR( YearStart, TodayDate ), "Date", [Date], "Period", "YTD", "Order", 10)
+VAR LastYear = SELECTCOLUMNS( CALENDAR( LastYearStart, LastYearEnd ), "Date", [Date], "Period", "Last Year", "Order", 11)
+VAR TwoYearsBack = SELECTCOLUMNS( CALENDAR( TwoYearsBackStart, TwoYearsBackEnd ), "Date", [Date], "Period", TwoYearBackLabel, "Order", 12)
+VAR ThreeYearsBack = SELECTCOLUMNS( CALENDAR( ThreeYearsBackStart, ThreeYearsBackEnd ), "Date", [Date], "Period", ThreeYearBackLabel, "Order", 13)
+VAR FourYearsBack = SELECTCOLUMNS( CALENDAR( FourYearsBackStart, FourYearsBackEnd ), "Date", [Date], "Period", FourYearBackLabel, "Order", 14)
+VAR FiveYearsBack = SELECTCOLUMNS( CALENDAR( FiveYearsBackStart, FiveYearsBackEnd ), "Date", [Date], "Period", FiveYearBackLabel, "Order", 15)
+VAR Last7Days = SELECTCOLUMNS( CALENDAR( TodayDate - 6, TodayDate ), "Date", [Date], "Period", "Last 7 Days", "Order", 16)
+VAR Last14Days = SELECTCOLUMNS( CALENDAR( TodayDate - 13, TodayDate ), "Date", [Date], "Period", "Last 14 Days", "Order", 17)
+VAR Last30Days = SELECTCOLUMNS( CALENDAR( TodayDate - 29, TodayDate ), "Date", [Date], "Period", "Last 30 Days", "Order", 18)
+// VAR LastYtdDays = SELECTCOLUMNS( CALENDAR( DATE( CurrentYear - 1, 1, 1 ), DATE( CurrentYear - 1, CurrentMonth, CurrentDay ) ), "Date", [Date], "Period", "Last Year to Date", "Order"..., 14)
+// VAR LastYearQtd = SELECTCOLUMNS( CALENDAR( LastYearQuarterStart, DATE( CurrentYear - 1, CurrentMonth, CurrentDay ) ), "Date", [Date], "Period", "Last Year QTD", "Order"..., 15)
+
+VAR Result = 
+    UNION(
+        AllDates,
+        _Today,
+        _Yesterday,
+        Last7Days, 
+        Last14Days, 
+        Last30Days,
+        ThisWeek,
+        LastWeek,
+        LastMonthDays, 
+        MtdDays, 
+        QtdDays,
+        LastQuarter,
+        YtdDays,
+        LastYear,
+        TwoYearsBack,
+        ThreeYearsBack,
+        FourYearsBack,
+        FiveYearsBack
+        // LastYtdDays,
+        // LastYearQtd
+    )
+RETURN
+    Result
